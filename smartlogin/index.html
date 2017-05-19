@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>SmartLogin</title>
+
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href='//fonts.googleapis.com/css?family=Raleway:400,300,600' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" href="css/normalize.css">
+    <link rel="stylesheet" href="css/skeleton.css">
+
+    <script type="text/javascript" src="lib/ethereumjs-tx.js"></script>
+    <script type="text/javascript" src="lib/ethereumjs-wallet-hd.js"></script>
+    <script type="text/javascript" src="lib/web3.min.js"></script>
+    <script type="text/javascript" src="./SmartLogin.abi.js"></script>
+    
+    <script type="text/javascript" src="../Contract.js"></script>
+    
+    <script type="text/javascript">
+       
+        const infuraUrl = "https://rinkeby.infura.io/";
+        const smartLoginAddr = "0x8fab9f121181c6b118b731fc298e4b9a18351f0e";
+
+        function getWallet(){
+            var mnemonic = prompt("Enter seed");
+            if(mnemonic == null){ 
+                document.body.style.background = "darkred";
+                return null;
+            }
+            return EthJS.WalletHD.fromMasterSeed(mnemonic).derivePath("m/44'/60'/0'/0/1").getWallet();
+        }
+
+        function register(){
+            var realm = prompt("What realm?");
+            smartlogin.sendTransaction(0, "register", function(err, res){
+                console.log(err, res);
+            }, realm);
+        }
+        function login(){
+            var realm = prompt("What realm?");
+            smartlogin.sendTransaction(0, "login", function(err, res){
+                console.log(err, res);
+            }, realm);
+        }
+        function ethUnlock(){
+            smartlogin.sendTransaction(0, "login", function(err, res){
+                out.innerHTML += "unlocked!<br>";
+            }, "pkill i3lock");
+        }
+        function ethLock(){
+            smartlogin.sendTransaction(0, "login", function(err, res){
+                out.innerHTML += "locked!<br>";
+            }, "lock");
+        }
+        function canAccess(){
+            var realm = prompt("What realm?");
+            smartlogin.callOffchain("CanAccessRealm", function(err, res){
+                out.innerHTML += "access to "+ realm +": " + res + "<br>";
+            }, smartlogin.myAddress, realm);
+        }
+        
+        function start(optionalWallet){
+            window.smartlogin = new Contract(SmartLoginABI, smartLoginAddr, web3, optionalWallet);
+            
+            out.innerHTML += "Address: " + smartlogin.myAddress + "<br>";
+            smartlogin.web3.eth.getBalance(smartlogin.myAddress, function(err, res){
+                out.innerHTML += "Balance: " + smartlogin.web3.fromWei(res, "ether") + " ETH<br>";
+            });
+        }
+
+        window.addEventListener('load', function() {
+            
+            window.out = document.getElementById("out");
+            out.innerHTML += "init...<br>";
+
+            // Checking if Web3 has been injected by the browser (Mist/MetaMask)
+            if (typeof web3 !== 'undefined') {
+                console.warn("Using web3 detected from external source.");
+                window.web3 = new Web3(web3.currentProvider);
+                window.web3.eth.getCoinbase(function(err, cb){
+                    start();
+                })
+
+            } else {
+                console.warn("No web3 detected. Using fallback provider and custom wallet!");
+                window.web3 = new Web3(new Web3.providers.HttpProvider(infuraUrl));
+                var wallet = getWallet();
+                start(wallet);
+            }
+        });
+
+    </script>
+</head>
+<body>
+    <br><br>
+    <div class="container">
+        <div class="row">
+            <div class="one-half column">
+                <h4>Contracts</h4>
+                <input class="button-primary" type="button" onclick="login()" value="Login">
+                <input class="button" type="button" onclick="register()" value="Register">
+                <input class="button" type="button" onclick="canAccess()" value="HaveIAccess?">
+
+                <br><input class="button" type="button" onclick="ethUnlock()" value="EthUnlock &copy;">
+                <input class="button" type="button" onclick="ethLock()" value="EthLock &copy;">
+            </div>
+            <div class="one-half column">
+                <h4>Out</h4>
+                <pre id="out" style="background:#EEE; padding:8px; border-radius:5px"></pre>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
